@@ -1,0 +1,20 @@
+{
+  "name": "codex-oauth-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone local gateway for calling the ChatGPT Codex backend with OAuth.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "auth": "node dist/auth-cli.js",
+    "start": "node dist/server.js",
+    "dev": "npm run build && npm run start"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "typescript": "^5.9.3"
+  }
+}
