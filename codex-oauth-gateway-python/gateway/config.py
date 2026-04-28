@@ -9,7 +9,8 @@ AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize"
 CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 REDIRECT_URI = "http://localhost:1455/auth/callback"
 SCOPE = "openid profile email offline_access"
-TOKEN_FILE = Path(os.getenv("CODEX_GATEWAY_TOKEN_FILE", ".tokens/openai.json"))
+DEFAULT_TOKEN_FILE = Path.home() / ".codex-oauth-gateway-python" / "openai.json"
+TOKEN_FILE = Path(os.getenv("CODEX_GATEWAY_TOKEN_FILE") or DEFAULT_TOKEN_FILE).expanduser()
 JWT_CLAIM_PATH = "https://api.openai.com/auth"
 
 OPENAI_HEADERS = {
