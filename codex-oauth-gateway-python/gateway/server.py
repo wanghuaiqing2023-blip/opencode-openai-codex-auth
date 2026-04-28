@@ -109,10 +109,9 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 stream=True,
             )
 
-            self.send_response(upstream.status_code)
-            self.send_header("x-gateway-upstream-retry-attempts", "0")
-
             if requested_stream:
+                self.send_response(upstream.status_code)
+                self.send_header("x-gateway-upstream-retry-attempts", "0")
                 self.send_header("content-type", upstream.headers.get("content-type", "text/event-stream; charset=utf-8"))
                 self.end_headers()
                 for chunk in upstream.iter_content(chunk_size=1024):
@@ -125,6 +124,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
             final = parse_final_response(full_text)
             if final is None:
                 self.send_response(status)
+                self.send_header("x-gateway-upstream-retry-attempts", "0")
                 self.send_header("content-type", "text/event-stream; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(full_text.encode("utf-8"))
@@ -132,6 +132,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
             payload = json.dumps(final, ensure_ascii=False).encode("utf-8")
             self.send_response(status)
+            self.send_header("x-gateway-upstream-retry-attempts", "0")
             self.send_header("content-type", "application/json; charset=utf-8")
             self.send_header("content-length", str(len(payload)))
             self.end_headers()
