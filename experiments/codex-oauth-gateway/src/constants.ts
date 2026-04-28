@@ -26,3 +26,4 @@ export const DEFAULT_INSTRUCTIONS =
 	"You are a helpful coding assistant. Answer clearly and directly.";
 
 export const DEFAULT_GATEWAY_PORT = 8787;
+export const DEFAULT_UPSTREAM_TIMEOUT_MS = 60_000;
