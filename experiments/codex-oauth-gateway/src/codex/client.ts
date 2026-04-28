@@ -1,12 +1,18 @@
 import {
 	CODEX_RESPONSES_URL,
+	DEFAULT_UPSTREAM_TIMEOUT_MS,
 	DEFAULT_INSTRUCTIONS,
 	OPENAI_HEADER_VALUES,
 	OPENAI_HEADERS,
 } from "../constants.js";
+import { GatewayError } from "../errors.js";
 import type { GatewayRequestBody } from "../types.js";
 import { normalizeModel } from "./model.js";
-import { convertSseToJson, wantsStream } from "./response.js";
+import {
+	handleErrorResponse,
+	handleSuccessResponse,
+	wantsStream,
+} from "./response.js";
 
 function ensureInclude(include: string[] | undefined): string[] {
 	const merged = new Set(include ?? []);
@@ -16,7 +22,11 @@ function ensureInclude(include: string[] | undefined): string[] {
 
 function transformBody(input: GatewayRequestBody): GatewayRequestBody {
 	if (!input.input) {
-		throw new Error("Request body must include an input field.");
+		throw new GatewayError(
+			400,
+			"MISSING_INPUT",
+			"Request body must include an input field.",
+		);
 	}
 
 	return {
@@ -63,27 +73,57 @@ export async function callCodex(
 	accountId: string,
 ): Promise<Response> {
 	const transformedBody = transformBody(body);
-	const response = await fetch(CODEX_RESPONSES_URL, {
-		method: "POST",
-		headers: createHeaders(
-			accessToken,
-			accountId,
-			transformedBody.prompt_cache_key,
-		),
-		body: JSON.stringify(transformedBody),
-	});
+	const timeoutMs = Number(
+		process.env.CODEX_UPSTREAM_TIMEOUT_MS ?? DEFAULT_UPSTREAM_TIMEOUT_MS,
+	);
+	const timeoutSignal = AbortSignal.timeout(
+		Number.isFinite(timeoutMs) && timeoutMs > 0
+			? timeoutMs
+			: DEFAULT_UPSTREAM_TIMEOUT_MS,
+	);
 
-	if (wantsStream(body)) {
-		return new Response(response.body, {
-			status: response.status,
-			statusText: response.statusText,
-			headers: response.headers,
+	let response: Response;
+	try {
+		response = await fetch(CODEX_RESPONSES_URL, {
+			method: "POST",
+			headers: createHeaders(
+				accessToken,
+				accountId,
+				transformedBody.prompt_cache_key,
+			),
+			body: JSON.stringify(transformedBody),
+			signal: timeoutSignal,
 		});
+	} catch (error) {
+		if (
+			error instanceof DOMException &&
+			error.name === "TimeoutError"
+		) {
+			throw new GatewayError(
+				504,
+				"UPSTREAM_TIMEOUT",
+				"Upstream Codex request timed out.",
+				{
+					timeoutMs,
+					upstreamRetryAttempts: 0,
+				},
+			);
+		}
+
+		throw new GatewayError(
+			502,
+			"UPSTREAM_REQUEST_FAILED",
+			"Failed to reach upstream Codex service.",
+			{
+				upstreamRetryAttempts: 0,
+				cause: error instanceof Error ? error.message : String(error),
+			},
+		);
 	}
 
 	if (!response.ok) {
-		return response;
+		return await handleErrorResponse(response);
 	}
 
-	return convertSseToJson(response);
+	return await handleSuccessResponse(response, wantsStream(body));
 }
