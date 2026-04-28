@@ -24,3 +24,5 @@ OPENAI_HEADER_VALUES = {
     "beta": "responses=experimental",
     "originator": "codex_cli_rs",
 }
+
+DEFAULT_INSTRUCTIONS = "You are a helpful coding assistant. Answer clearly and directly."

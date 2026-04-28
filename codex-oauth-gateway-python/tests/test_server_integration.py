@@ -112,6 +112,10 @@ class ServerIntegrationTests(unittest.TestCase):
                 self.assertEqual(response.status, 200)
                 payload = json.loads(response.read().decode("utf-8"))
                 self.assertEqual(payload["id"], "resp_1")
+                self.assertTrue(mock_post.called)
+                called_json = mock_post.call_args.kwargs["json"]
+                self.assertIn("instructions", called_json)
+                self.assertTrue(called_json["instructions"])
                 conn.close()
             finally:
                 auth.TOKEN_FILE = original_auth_token_file

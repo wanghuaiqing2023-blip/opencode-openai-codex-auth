@@ -6,6 +6,7 @@ import requests
 from .auth import get_chatgpt_account_id, get_valid_tokens, load_tokens
 from .config import (
     CODEX_RESPONSES_URL,
+    DEFAULT_INSTRUCTIONS,
     DEFAULT_GATEWAY_PORT,
     DEFAULT_UPSTREAM_TIMEOUT_SECONDS,
     OPENAI_HEADERS,
@@ -47,6 +48,7 @@ def _transform_body(body: dict) -> dict:
         "model": normalize_model(body.get("model")),
         "store": False,
         "stream": True,
+        "instructions": body.get("instructions") or DEFAULT_INSTRUCTIONS,
         "reasoning": {
             "effort": (body.get("reasoning") or {}).get("effort", "medium"),
             "summary": (body.get("reasoning") or {}).get("summary", "auto"),
