@@ -16,7 +16,31 @@ class GatewayMigrationTests(unittest.TestCase):
             'data: {"type":"response.done","response":{"id":"resp_1"}}',
             "",
         ])
-        self.assertEqual(parse_final_response(sse), {"id": "resp_1"})
+        self.assertEqual(
+            parse_final_response(sse),
+            {
+                "id": "resp_1",
+                "output_text": "hi",
+                "output": [
+                    {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{"type": "output_text", "text": "hi"}],
+                    }
+                ],
+            },
+        )
+
+    def test_parse_final_response_preserves_existing_output(self):
+        sse = "\n".join([
+            'data: {"type":"response.output_text.delta","delta":"hi"}',
+            'data: {"type":"response.done","response":{"id":"resp_1","output":[{"type":"message"}]}}',
+            "",
+        ])
+        self.assertEqual(
+            parse_final_response(sse),
+            {"id": "resp_1", "output": [{"type": "message"}]},
+        )
 
     def test_map_usage_limit(self):
         status, body = map_usage_limit_404(404, '{"error":{"code":"usage_limit_exceeded"}}')

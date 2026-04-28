@@ -4,6 +4,9 @@ import json
 
 
 def parse_final_response(sse_text: str):
+    text_deltas: list[str] = []
+    final_response = None
+
     for line in sse_text.splitlines():
         if not line.startswith("data: "):
             continue
@@ -11,9 +14,39 @@ def parse_final_response(sse_text: str):
             event = json.loads(line[6:])
         except Exception:
             continue
+
+        if event.get("type") in {"response.output_text.delta", "output_text.delta"}:
+            delta = event.get("delta")
+            if isinstance(delta, str):
+                text_deltas.append(delta)
+            continue
+
         if event.get("type") in {"response.done", "response.completed"}:
-            return event.get("response")
-    return None
+            final_response = event.get("response")
+
+    if not final_response:
+        return None
+
+    if not isinstance(final_response, dict):
+        return final_response
+
+    combined_text = "".join(text_deltas).strip()
+    if not combined_text:
+        return final_response
+
+    output = final_response.get("output")
+    has_output = isinstance(output, list) and len(output) > 0
+    if not has_output:
+        final_response["output_text"] = combined_text
+        final_response["output"] = [
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [{"type": "output_text", "text": combined_text}],
+            }
+        ]
+
+    return final_response
 
 
 def map_usage_limit_404(status_code: int, body_text: str) -> tuple[int, str]:
